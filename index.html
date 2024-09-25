@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automated Resume Screening</title>
+    <style>
+        /* General Styles */
+        body {
+            background-color: rgb(255, 255, 255);
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            height: 100vh;
+        }
+
+        h1#c1 {
+            color: #0c0c0c;
+            margin: 2em 0;
+        }
+
+        .container {
+            background-color: #b1adad8f;
+            padding: 1.5em;
+            border-radius: 5px;
+            box-shadow: 0 7px 25px rgba(0, 0, 0, 0.842);
+            width: 70%;
+            height: 80%;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Form Styles */
+        form#upload-form {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+            width: 100%;
+        }
+
+        .box {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-bottom: 5em;
+            width: 50%;
+        }
+
+        .box input[type="text"], .box input[type="file"] {
+            margin-bottom: 1em;
+        }
+
+        /* Custom File Upload Styles */
+        .custom-file-upload {
+            display: inline-block;
+            padding: 0.5em 1em;
+            margin-bottom: 0.5em;
+            color: #fff;
+            background-color: #222861;
+            border-radius: 10px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        #job-role {
+            padding: 0.5em 2.7em;
+            border-radius: 10px;
+            display: inline-block;
+            width: 47%;
+            margin-bottom: 1em;
+            transition: transform 0.3s;
+        }
+
+        #job-role:hover{
+            transform: scale(1.2);
+        }
+        
+
+        .custom-file-upload:hover {
+            background-color: #605e9a;
+            transform: scale(1.2);
+        }
+
+        .custom-file-upload input[type="file"] {
+            display: none;
+        }
+
+        /* File Names Display */
+        .file-names {
+            margin-top: 0.5em;
+            color: #000000;
+            font-style: normal;
+        }
+
+        /* Button Styles */
+        button.hoverme {
+            background-color:  #222861;
+            color: #ffffff;
+            border: none;
+            padding: 0.75em 3em;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+            text-transform: uppercase;
+            align-self: self-start;
+            
+        }
+
+        button.hoverme:hover {
+            background-color: #605e9a;
+            transform: scale(1.2);
+        }
+
+        #results {
+            margin-top: 0em;
+            margin-bottom: 10em;
+            width: 50%;
+            align-self: center;
+        }
+    </style>
+</head>
+<body>
+    <h1 id="c1">Automated Resume Screening System</h1>
+    <div class="container">
+        <form id="upload-form" method="POST" enctype="multipart/form-data" action="/process">
+            <div class="box">
+                <label for="job-role"></label>
+                <input type="text" id="job-role" name="job-role" placeholder="Enter Job Role" required>
+                <label class="custom-file-upload">
+                    <input type="file" id="job-description" name="job-description" accept=".txt" required>
+                    Job Description (Text File)
+                </label>
+                <span id="job-description-filename" class="file-names"></span>
+                <label class="custom-file-upload">
+                    <input type="file" id="resume" name="resume" multiple accept=".pdf,.docx" required>
+                    Upload Resumes (PDF/DOCX)
+                </label>
+                <span id="resume-filenames" class="file-names"></span>
+            </div>
+            <button type="submit" class="hoverme">Upload and Process</button>
+            <div id="results"></div>
+        </form>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const jobDescriptionInput = document.getElementById('job-description');
+            const resumeInput = document.getElementById('resume');
+            const jobRoleInput = document.getElementById('job-role');
+            const jobDescriptionFilename = document.getElementById('job-description-filename');
+            const resumeFilenames = document.getElementById('resume-filenames');
+
+            jobDescriptionInput.addEventListener('change', function() {
+                jobDescriptionFilename.textContent = this.files.length > 0 ? this.files[0].name : '';
+            });
+
+            resumeInput.addEventListener('change', function() {
+                const fileNames = Array.from(this.files).map(file => file.name).join(', ');
+                resumeFilenames.textContent = fileNames;
+            });
+
+            document.getElementById('upload-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const jobDescriptionFile = jobDescriptionInput.files[0];
+                const resumesFiles = resumeInput.files;
+                const jobRole = jobRoleInput.value;
+                
+                const formData = new FormData();
+                formData.append('job-description', jobDescriptionFile);
+                formData.append('job-role', jobRole);
+                
+                for (let i = 0; i < resumesFiles.length; i++) {
+                    formData.append('resume', resumesFiles[i]);
+                }
+                
+                const response = await fetch('/process', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                displayResults(result, jobRole);
+            });
+
+            function displayResults(result, jobRole) {
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = `<h2>Ranked Candidates for ${jobRole} Job</h2>`;
+                result.ranked_candidates.forEach((candidate, index) => {
+                    const candidateDiv = document.createElement('div');
+                    candidateDiv.innerHTML = `<strong>${index + 1}. ${candidate.name}</strong> - Score: ${candidate.score}`;
+                    resultsDiv.appendChild(candidateDiv);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
